@@ -56,6 +56,7 @@ article-html-generator/
 python main.py
 ```
 3. Po uruchomieniu aplikacji, skrypt odczyta artykuł z pliku article.txt, przekształci go do formatu HTML, oczyszczając go z elementów Markdown, a następnie zapisze wynik do pliku artykul.html. Jeśli artykuł wymaga wstawienia obrazków, zostaną one oznaczone tagiem <'img src="image_placeholder.jpg"'> i będzie wygenerowany odpowiedni prompt w atrybucie alt.
+4. Zawartość pliku artykul.html wstaw do sekcji <body> w pliku szablon.html, aby zobaczyć wynik końcowy. 
 
 ## Obsługa błędów
 Jeśli wystąpią jakiekolwiek błędy, aplikacja zaloguje je w konsoli i zapisze w logu. Możesz śledzić błędy za pomocą loggera w aplikacji.
