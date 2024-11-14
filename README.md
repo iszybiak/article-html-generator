@@ -5,7 +5,7 @@ Aplikacja służy do przekształcania artykułów w formacie tekstowym do format
 Obejmuje kilka kluczowych kroków:
 
 * Wczytanie artykułu z pliku – Aplikacja odczytuje treść artykułu z pliku tekstowego article.txt.
-* Redagowanie i generowanie HTML – Za pomocą modelu GPT-4 artykuł jest redagowany, a następnie konwertowany do formatu HTML. Dodatkowo, w miejscach, w których warto umieścić obrazy, dodawane są tagi <img src="image_placeholder.jpg">. Każdy obrazek ma przypisany atrybut alt z odpowiednim promptem do wygenerowania obrazu.
+* Redagowanie i generowanie HTML – Za pomocą modelu GPT-4 artykuł jest redagowany, a następnie konwertowany do formatu HTML. Dodatkowo, w miejscach, w których warto umieścić obrazy, dodawane są tagi '<img src="image_placeholder.jpg">'. Każdy obrazek ma przypisany atrybut alt z odpowiednim promptem do wygenerowania obrazu.
 * Czyszczenie Markdown – Po redakcji artykułu aplikacja je usuwa znaczniki składni Markdown, specyficzne dla ChatGPT.
 * Zapis HTML do pliku –  Wygenerowany HTML jest zapisywany do pliku artykul.html.
 
@@ -55,7 +55,7 @@ article-html-generator/
 ```
 python main.py
 ```
-3. Po uruchomieniu aplikacji, skrypt odczyta artykuł z pliku article.txt, przekształci go do formatu HTML, oczyszczając go z elementów Markdown, a następnie zapisze wynik do pliku artykul.html. Jeśli artykuł wymaga wstawienia obrazków, zostaną one oznaczone tagiem <img src="image_placeholder.jpg"> i będzie wygenerowany odpowiedni prompt w atrybucie alt.
+3. Po uruchomieniu aplikacji, skrypt odczyta artykuł z pliku article.txt, przekształci go do formatu HTML, oczyszczając go z elementów Markdown, a następnie zapisze wynik do pliku artykul.html. Jeśli artykuł wymaga wstawienia obrazków, zostaną one oznaczone tagiem '<img src="image_placeholder.jpg">' i będzie wygenerowany odpowiedni prompt w atrybucie alt.
 
 ## Obsługa błędów
 Jeśli wystąpią jakiekolwiek błędy, aplikacja zaloguje je w konsoli i zapisze w logu. Możesz śledzić błędy za pomocą loggera w aplikacji.
