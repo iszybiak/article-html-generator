@@ -1,29 +1,25 @@
+import json
+import logging
 from openai import OpenAI, OpenAIError
-from torch.distributed.elastic.agent.server.api import logger
-import os
-import re
 
-def read_article(file_path):
+# Logger configuration
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+
+# Loading configuration from JSON file
+def load_config(config_file="config.json"):
     try:
-        if not os.path.exists(file_path):
-            logger.error(f"File not found: {file_path}")
-            return None
-        with open(file_path, 'r', encoding='utf-8') as file:
-            article_text = file.read().strip()
+        with open(config_file, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.error(f"Configuration file not found: {config_file}")
+        return {}
+    except json.JSONDecodeError:
+        logger.error(f"Error decoding JSON configuration file: {config_file}")
+        return {}
 
-        if not article_text:
-            logger.error(f"File is empty: {file_path}")
-            return None
-
-        return article_text
-
-    except UnicodeDecodeError:
-        logger.error(f"File encoding issue. Ensure the file is UTF-8 encoded: {file_path}")
-        return None
-
-    except Exception as e:
-        logger.error(f"Error reading article : {e}")
-
+# Loading API key
 def load_api_key(file_path="API_KEY"):
     try:
         with open(file_path, "r") as f:
@@ -35,16 +31,37 @@ def load_api_key(file_path="API_KEY"):
         logger.error(f"Error reading API_KEY file: {e}")
         return ""
 
-
-def generate_html(article_text):
+# Reading article form file (supports large files)
+def read_article(file_path):
     try:
-        API_KEY = load_api_key()
-        if not API_KEY:
+        article_text = []
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                article_text.append(line.strip())
+            article_text = " ".join(article_text)
+
+        if not article_text.strip():
+            logger.error(f"File is empty: {file_path}")
+            return None
+        return article_text
+
+    except UnicodeDecodeError:
+        logger.error(f"File encoding issue. Ensure the file is UTF-8 encoded: {file_path}")
+        return None
+    except Exception as e:
+        logger.error(f"Error reading article: {e}")
+        return None
+
+
+# Generate HTML with OpenAI
+def generate_html(article_text, openai_api_key, openai_model):
+    try:
+        if not openai_api_key:
             return ""
-        client = OpenAI(api_key=API_KEY)
+        client = OpenAI(api_key=openai_api_key)
 
         completions = client.chat.completions.create(
-             model="gpt-4o-mini",
+             model=openai_model,
              messages=[{
                  "role": "user",
                  "content": f"""Zredaguj poniższy artykuł, a natępie przekształć go do formatu HTML, strukturalnie podzieloneo z użyciem odpowiednich tagów HTML.
@@ -68,13 +85,14 @@ def generate_html(article_text):
         logger.error(f"Unexpected error while generating HTML: {e}")
         return ""
 
-#Oczyszczanie pliku ze składni Markdown
+
+# Text cleanup form Markdown html
 def file_cleanup(text):
-    # Usuwanie bloków Markdown otoczonych przez ```html i ```
+    # Removing Markdown blocks surrounded by ```html and ```
     cleaned_text = text.replace("```html", "").replace("```", "").strip()
     return cleaned_text
 
-
+# Saving generated HTML to file
 def save_html_to_file(content, output_file):
     try:
         with open(output_file, 'w', encoding='UTF-8') as file:
@@ -85,10 +103,18 @@ def save_html_to_file(content, output_file):
     except Exception as e:
         logger.error(f"Unexpected error occurred while saving HTML content to file {output_file}: {e}")
 
-def process_article(input_file="article.txt", output_file="artykul.html"):
+# Processing the article and generating HTML
+def process_article(config):
+    input_file = config.get("input_file", "article.txt")
+    output_file = config.get("output_file", "artykul.html")
+    api_key_file = config.get("api_key_file", "API_KEY")
+    openai_model = config.get("openai_model", "model.json")
+
+    openai_api_key = load_api_key(api_key_file)
     article_content = read_article(input_file)
+
     if article_content:
-        html_content = generate_html(article_content)
+        html_content = generate_html(article_content, openai_api_key, openai_model)
         cleaned_content = file_cleanup(html_content)
         if cleaned_content:
             save_html_to_file(cleaned_content, output_file)
@@ -97,9 +123,15 @@ def process_article(input_file="article.txt", output_file="artykul.html"):
     else:
         logger.error("Article content is empty or not read properly.")
 
+
+# Starting the main function
 if __name__ == "__main__":
     try:
-        process_article()
+        config = load_config()
+        if config:
+            process_article(config)
+        else:
+            logger.error("Failed to load configuration.")
     except Exception as e:
         logger.error(f"An error occurred in the main process: {e}")
 

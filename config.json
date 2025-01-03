@@ -1,0 +1,6 @@
+{
+    "api_key_file": "API_KEY",
+    "input_file": "article.txt",
+    "output_file": "artykul.html",
+    "openai_model": "gpt-4o-mini"
+}
