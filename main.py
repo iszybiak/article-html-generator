@@ -1,4 +1,4 @@
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 from torch.distributed.elastic.agent.server.api import logger
 import os
 import re
@@ -24,24 +24,24 @@ def read_article(file_path):
     except Exception as e:
         logger.error(f"Error reading article : {e}")
 
+def load_api_key(file_path="API_KEY"):
+    try:
+        with open(file_path, "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        logger.error(f"API_KEY file not found. {file_path}")
+        return ""
+    except Exception as e:
+        logger.error(f"Error reading API_KEY file: {e}")
+        return ""
+
+
 def generate_html(article_text):
     try:
-        try:
-            with open("API_KEY", "r") as f:
-                API_KEY = f.read().strip()
-                if not API_KEY:
-                    raise ValueError("API_KEY is empty. Please check the file.")
-        except FileNotFoundError:
-            logger.error("API_KEY file not found.")
-            return ""
-        except ValueError as e:
-            logger.error(f"Error with API_KEY file: {e}")
-            return ""
-        except Exception as e:
-            logger.error(f"Error reading API_KEY file: {e}")
+        API_KEY = load_api_key()
+        if not API_KEY:
             return ""
         client = OpenAI(api_key=API_KEY)
-
 
         completions = client.chat.completions.create(
              model="gpt-4o-mini",
@@ -60,6 +60,10 @@ def generate_html(article_text):
          )
 
         return completions.choices[0].message.content
+    except OpenAIError as e:
+        logger.error(f"Open API error: {e}")
+        return ""
+
     except Exception as e:
         logger.error(f"Unexpected error while generating HTML: {e}")
         return ""
@@ -71,7 +75,7 @@ def file_cleanup(text):
     return cleaned_text
 
 
-def save_html_to_file(content, output_file="artykul.html"):
+def save_html_to_file(content, output_file):
     try:
         with open(output_file, 'w', encoding='UTF-8') as file:
             file.write(content)
@@ -81,19 +85,21 @@ def save_html_to_file(content, output_file="artykul.html"):
     except Exception as e:
         logger.error(f"Unexpected error occurred while saving HTML content to file {output_file}: {e}")
 
+def process_article(input_file="article.txt", output_file="artykul.html"):
+    article_content = read_article(input_file)
+    if article_content:
+        html_content = generate_html(article_content)
+        cleaned_content = file_cleanup(html_content)
+        if cleaned_content:
+            save_html_to_file(cleaned_content, output_file)
+        else:
+            logger.error("No HTML content generated.")
+    else:
+        logger.error("Article content is empty or not read properly.")
 
 if __name__ == "__main__":
     try:
-        article_content = read_article("article.txt")
-        if article_content:
-            html_content = generate_html(article_content)
-            cleaned_content = file_cleanup(html_content)
-            if cleaned_content:
-                save_html_to_file(cleaned_content)
-            else:
-                logger.error("No HTML content generated.")
-        else:
-            logger.error("Article content is empty or not read properly.")
+        process_article()
     except Exception as e:
         logger.error(f"An error occurred in the main process: {e}")
 
