@@ -8,7 +8,6 @@ from openai import OpenAI, OpenAIError
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-
 # Loading configuration from JSON file
 def load_config(config_file="config.json"):
     try:
@@ -31,14 +30,14 @@ def load_api_key(file_path="API_KEY"):
         with open(file_path, "r") as f:
             return f.read().strip()
     except FileNotFoundError:
-        logger.error(f"API_KEY file not found. {file_path}")
+        logger.error(f"API_KEY file not found: {file_path}")
         return ""
     except Exception as e:
         logger.error(f"Error reading API_KEY file: {e}")
         logger.error(traceback.format_exc())
         return ""
 
-# Reading article form file (supports large files)
+# Reading article from file (supports large files)
 def read_article(file_path):
     try:
         article_text = []
@@ -60,7 +59,6 @@ def read_article(file_path):
         logger.error(traceback.format_exc())
         return None
 
-
 # Generate HTML with OpenAI
 def generate_html(article_text, openai_api_key, openai_model):
     try:
@@ -68,35 +66,40 @@ def generate_html(article_text, openai_api_key, openai_model):
             return ""
         client = OpenAI(api_key=openai_api_key)
 
+        prompt = (
+            "Convert the following article into HTML with proper structural division "
+            "using <article> and <section> tags. "
+            "1. HTML structure: Organize the content according to the hierarchy, using: "
+            "<article> as the main frame for the entire article, "
+            "<section> to logically divide the content into topical sections. "
+            "2. Adding images: Identify appropriate places for images. "
+            "Insert <img src=\"image_placeholder.jpg\"> tags in the selected locations. "
+            "Assign a rich and detailed English prompt to the alt attribute, describing the image "
+            "according to the following rules: "
+            "Main Scene: Describe exactly what the focal point of the image is, e.g. technology, person, place. "
+            "Action and Interaction: Include what is happening in the scene and what elements are interacting. "
+            "Background Details: Add important information about the surroundings, e.g. landscape, technology, "
+            "architectural details. Style and Aesthetics: Define the artistic style (e.g. realistic, futuristic) "
+            "and dominant color scheme. Image Purpose: Make sure the description emphasizes the context and meaning "
+            "of the image in relation to the article. "
+            "Create descriptions in the form of complete, detailed sentences (min. 4-5 sentences). "
+            "3. Image captions: Surround each image with a <figure> tag. "
+            "Add a description of the image in the <figcaption> tag. "
+            "4. Return code: Generate only HTML code containing content to be placed between <body> and </body>. "
+            "Do not include <html>, <head>, or <body> tags. "
+            "5. Code formatting rules: Keep it readable and indented. "
+            "Each section must be logically described and properly tagged. "
+            "Extract <footer> outside <article>. Keep number of paragraphs. "
+            "Article body: "
+            f"{article_text}"
+        )
+
         completions = client.chat.completions.create(
-             model=openai_model,
-             messages=[{
-                 "role": "user",
-                 "content": f"""Convert the following article into HTML with proper structural division using <article> and <section> tags.
-                                1. HTML structure: Organize the content according to the hierarchy, using:
-                                    <article> as the main frame for the entire article,
-                                    <section> to logically divide the content into topical sections.
-                                2. Adding images:
-                                    Identify appropriate places for images.
-                                    Insert <img src="image_placeholder.jpg"> tags in the selected locations.
-                                    Assign a rich and detailed English prompt to the alt attribute, describing the image according to the following rules:
-                                        Main Scene: Describe exactly what the focal point of the image is, e.g. technology, person, place.
-                                        Action and Interaction: Include what is happening in the scene and what elements are interacting.
-                                        Background Details: Add important information about the surroundings, e.g. landscape, technology, architectural details.
-                                        Style and Aesthetics: Define the artistic style (e.g. realistic, futuristic) and dominant color scheme.
-                                        Image Purpose: Make sure the description emphasizes the context and meaning of the image in relation to the article.
-                                    Create descriptions in the form of complete, detailed sentences (min. 4-5 sentences).
-                                3. Image captions:
-                                    Surround each image with a <figure> tag.
-                                    Add a description of the image in the <figcaption> tag.
-                                4. Return code: Generate only HTML code containing content to be placed between <body> and </body>. Do not include <html>, <head>, or <body> tags.
-                                5. Code formatting rules:
-                                    Keep it readable and indented.
-                                    Each section must be logically described and properly tagged.
-                                    Extract <footer> outside <article>. 
-                                    Keep number of paragraphs. 
-                                Article body:
-                                {article_text}""" }],
+            model=openai_model,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }],
         )
 
         return completions.choices[0].message.content
@@ -104,14 +107,12 @@ def generate_html(article_text, openai_api_key, openai_model):
         logger.error(f"Open API error: {e}")
         logger.error(traceback.format_exc())
         return ""
-
     except Exception as e:
         logger.error(f"Unexpected error while generating HTML: {e}")
         logger.error(traceback.format_exc())
         return ""
 
-
-# Text cleanup form Markdown html
+# Text cleanup from Markdown HTML
 def file_cleanup(text):
     # Removing Markdown blocks surrounded by ```html and ```
     cleaned_text = text.replace("```html", "").replace("```", "").strip()
@@ -154,8 +155,6 @@ def process_article(config):
         logger.error(f"Error in processing article: {e}")
         logger.error(traceback.format_exc())
 
-
-
 # Starting the main function
 if __name__ == "__main__":
     try:
@@ -166,5 +165,3 @@ if __name__ == "__main__":
             logger.error("Failed to load configuration.")
     except Exception as e:
         logger.error(f"An error occurred in the main process: {e}")
-
-
