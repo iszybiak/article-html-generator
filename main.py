@@ -1,5 +1,7 @@
 import json
 import logging
+import traceback
+
 from openai import OpenAI, OpenAIError
 
 # Logger configuration
@@ -18,6 +20,10 @@ def load_config(config_file="config.json"):
     except json.JSONDecodeError:
         logger.error(f"Error decoding JSON configuration file: {config_file}")
         return {}
+    except Exception as e:
+        logger.error(f"Unexpected error while loading config: {e}")
+        logger.error(traceback.format_exc())
+        return {}
 
 # Loading API key
 def load_api_key(file_path="API_KEY"):
@@ -29,6 +35,7 @@ def load_api_key(file_path="API_KEY"):
         return ""
     except Exception as e:
         logger.error(f"Error reading API_KEY file: {e}")
+        logger.error(traceback.format_exc())
         return ""
 
 # Reading article form file (supports large files)
@@ -50,6 +57,7 @@ def read_article(file_path):
         return None
     except Exception as e:
         logger.error(f"Error reading article: {e}")
+        logger.error(traceback.format_exc())
         return None
 
 
@@ -64,25 +72,42 @@ def generate_html(article_text, openai_api_key, openai_model):
              model=openai_model,
              messages=[{
                  "role": "user",
-                 "content": f"""Zredaguj poniższy artykuł, a natępie przekształć go do formatu HTML, strukturalnie podzieloneo z użyciem odpowiednich tagów HTML.
-                            Zidentyfikuj miejsca, w których warto dodać obrazy, oznaczone tagiem <img src="image_placeholder.jpg">.
-                            Do każdego utwórz dokładny prompt potrzebny do wygenerowania obrazu adekwatnego do atytkułu.
-                            Treść prompte przypisz do atrybytu alt.
-                            Umieść podpisy pod grafikami używając <figure> i <figcaption>.
-                            Zwrócony kod powinien zawierać wyłącznie zawartość do wstawienia pomiędzy tagami <body> i </body>. 
-                            Nie dołączaj znaczników <html>,<head> ani <body>.
-                            Artykuł:
-                            {article_text}"""
-             }],
-         )
+                 "content": f"""Convert the following article into HTML with proper structural division using <article> and <section> tags.
+                                1. HTML structure: Organize the content according to the hierarchy, using:
+                                    <article> as the main frame for the entire article,
+                                    <section> to logically divide the content into topical sections.
+                                2. Adding images:
+                                    Identify appropriate places for images.
+                                    Insert <img src="image_placeholder.jpg"> tags in the selected locations.
+                                    Assign a rich and detailed English prompt to the alt attribute, describing the image according to the following rules:
+                                        Main Scene: Describe exactly what the focal point of the image is, e.g. technology, person, place.
+                                        Action and Interaction: Include what is happening in the scene and what elements are interacting.
+                                        Background Details: Add important information about the surroundings, e.g. landscape, technology, architectural details.
+                                        Style and Aesthetics: Define the artistic style (e.g. realistic, futuristic) and dominant color scheme.
+                                        Image Purpose: Make sure the description emphasizes the context and meaning of the image in relation to the article.
+                                    Create descriptions in the form of complete, detailed sentences (min. 4-5 sentences).
+                                3. Image captions:
+                                    Surround each image with a <figure> tag.
+                                    Add a description of the image in the <figcaption> tag.
+                                4. Return code: Generate only HTML code containing content to be placed between <body> and </body>. Do not include <html>, <head>, or <body> tags.
+                                5. Code formatting rules:
+                                    Keep it readable and indented.
+                                    Each section must be logically described and properly tagged.
+                                    Extract <footer> outside <article>. 
+                                    Keep number of paragraphs. 
+                                Article body:
+                                {article_text}""" }],
+        )
 
         return completions.choices[0].message.content
     except OpenAIError as e:
         logger.error(f"Open API error: {e}")
+        logger.error(traceback.format_exc())
         return ""
 
     except Exception as e:
         logger.error(f"Unexpected error while generating HTML: {e}")
+        logger.error(traceback.format_exc())
         return ""
 
 
@@ -100,28 +125,35 @@ def save_html_to_file(content, output_file):
         logger.info(f"HTML content successfully saved to {output_file}.")
     except IOError as e:
         logger.error(f"IO error occurred while saving HTML to file {output_file}: {e}")
+        logger.error(traceback.format_exc())
     except Exception as e:
         logger.error(f"Unexpected error occurred while saving HTML content to file {output_file}: {e}")
+        logger.error(traceback.format_exc())
 
 # Processing the article and generating HTML
 def process_article(config):
     input_file = config.get("input_file", "article.txt")
     output_file = config.get("output_file", "artykul.html")
     api_key_file = config.get("api_key_file", "API_KEY")
-    openai_model = config.get("openai_model", "model.json")
+    openai_model = config.get("openai_model", "gpt-4o-mini")
 
-    openai_api_key = load_api_key(api_key_file)
-    article_content = read_article(input_file)
+    try:
+        openai_api_key = load_api_key(api_key_file)
+        article_content = read_article(input_file)
 
-    if article_content:
-        html_content = generate_html(article_content, openai_api_key, openai_model)
-        cleaned_content = file_cleanup(html_content)
-        if cleaned_content:
-            save_html_to_file(cleaned_content, output_file)
+        if article_content:
+            html_content = generate_html(article_content, openai_api_key, openai_model)
+            cleaned_content = file_cleanup(html_content)
+            if cleaned_content:
+                save_html_to_file(cleaned_content, output_file)
+            else:
+                logger.error("No HTML content generated.")
         else:
-            logger.error("No HTML content generated.")
-    else:
-        logger.error("Article content is empty or not read properly.")
+            logger.error("Article content is empty or not read properly.")
+    except Exception as e:
+        logger.error(f"Error in processing article: {e}")
+        logger.error(traceback.format_exc())
+
 
 
 # Starting the main function
